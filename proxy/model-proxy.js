@@ -354,11 +354,8 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
                 if (isModelCall) {
                     try {
                         const parsed = JSON.parse(body);
-                        const hadThinking = !!parsed.thinking;
-                        const hadBlocks = parsed.messages?.some(m => Array.isArray(m?.content) && m.content.some(b => b.type === 'thinking'));
                         stripAllThinkingBlocks(parsed);
                         body = Buffer.from(JSON.stringify(parsed));
-                        console.log(`[MODEL-PROXY] #${reqId} thinking strip: hadThinking=${hadThinking} hadBlocks=${hadBlocks} afterThinking=${!!parsed.thinking} bodyLen=${body.length}`);
                     } catch { /* pass through */ }
                 }
 
