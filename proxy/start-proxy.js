@@ -8,10 +8,13 @@ const BACKEND_DEFS = {
 };
 
 // Legacy mode: start-proxy.js <targetUrl> <apiKey> (used by deepclaude.sh/ps1)
-const targetUrl = process.argv[2] || process.env.CHEAPCLAUDE_TARGET_URL;
-const apiKey = process.argv[3] || process.env.CHEAPCLAUDE_API_KEY;
+// Only treat as legacy if first positional arg looks like a URL (not a --flag)
+const rawArg2 = process.argv[2];
+const isLegacyUrl = rawArg2 && !rawArg2.startsWith('--') && rawArg2.includes('://');
+const targetUrl = isLegacyUrl ? rawArg2 : (process.env.CHEAPCLAUDE_TARGET_URL || null);
+const apiKey = isLegacyUrl ? (process.argv[3] || process.env.CHEAPCLAUDE_API_KEY) : null;
 
-if (targetUrl && apiKey) {
+if (isLegacyUrl && targetUrl && apiKey) {
     // Legacy single-backend mode
     const backends = {};
     for (const [name, def] of Object.entries(BACKEND_DEFS)) {
