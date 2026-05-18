@@ -152,6 +152,7 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
             apiKey: startBackend ? startBackend.apiKey : apiKey,
             useBearer: startBackend ? startBackend.useBearer : initialBearer,
             hadNonAnthropicSession: !!startBackend,
+            hadSwitch: false,
         };
 
         let reqCount = 0;
@@ -193,8 +194,10 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
         }
 
         function switchMode(name) {
+            const prev = state.mode;
+            if (name === prev) return { mode: name, previous: prev };
+            state.hadSwitch = true;
             if (name === 'anthropic') {
-                const prev = state.mode;
                 state.mode = 'anthropic';
                 state.target = new URL(ANTHROPIC_FALLBACK);
                 state.apiKey = null;
@@ -204,7 +207,6 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
             const b = allBackends[name];
             if (!b) return { error: `Unknown backend: ${name}. Valid: anthropic, ${Object.keys(allBackends).join(', ')}` };
             if (!b.apiKey) return { error: `API key not set for ${name}` };
-            const prev = state.mode;
             state.mode = name;
             state.target = b.target;
             state.apiKey = b.apiKey;
@@ -354,7 +356,17 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
                 if (isModelCall) {
                     try {
                         const parsed = JSON.parse(body);
-                        stripAllThinkingBlocks(parsed);
+                        // If we've switched backends, strip ALL thinking blocks —
+                        // we can't tell which blocks are from which backend and
+                        // foreign blocks cause 400s on both sides.
+                        // If we've never switched (pure same-backend session),
+                        // keep signed thinking blocks (they're from the current
+                        // backend) and only strip unsigned ones.
+                        if (state.hadSwitch) {
+                            stripAllThinkingBlocks(parsed);
+                        } else {
+                            stripUnsignedThinkingBlocks(parsed);
+                        }
                         body = Buffer.from(JSON.stringify(parsed));
                     } catch { /* pass through */ }
                 }
