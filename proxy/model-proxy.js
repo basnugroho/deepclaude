@@ -110,6 +110,12 @@ function stripAllThinkingBlocks(body) {
         if (!Array.isArray(msg.content)) continue;
         msg.content = msg.content.filter(b => b.type !== 'thinking');
     }
+    // Also disable top-level thinking — DeepSeek rejects if thinking
+    // blocks are stripped but thinking mode remains enabled (400:
+    // "content[].thinking must be passed back to the API").
+    if (body.thinking) {
+        delete body.thinking;
+    }
 }
 
 function stripUnsignedThinkingBlocks(body) {
