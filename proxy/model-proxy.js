@@ -153,6 +153,7 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
             useBearer: startBackend ? startBackend.useBearer : initialBearer,
             hadNonAnthropicSession: !!startBackend,
             hadSwitch: false,
+            stripNextRequest: false,
         };
 
         let reqCount = 0;
@@ -193,10 +194,15 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
             };
         }
 
-        function switchMode(name) {
+        function switchMode(name, options = {}) {
             const prev = state.mode;
-            if (name === prev) return { mode: name, previous: prev };
+            if (name === prev && !options.force) return { mode: name, previous: prev };
+
+            // stripNextRequest: strip ALL thinking blocks on next request only,
+            // then auto-reset to allow new thinking blocks from new backend
+            state.stripNextRequest = true;
             state.hadSwitch = true;
+
             if (name === 'anthropic') {
                 state.mode = 'anthropic';
                 state.target = new URL(ANTHROPIC_FALLBACK);
@@ -229,6 +235,7 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
                         flags: {
                             hadSwitch: state.hadSwitch,
                             hadNonAnthropicSession: state.hadNonAnthropicSession,
+                            stripNextRequest: state.stripNextRequest,
                         },
                     }));
                     return;
@@ -284,17 +291,17 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
                         clientRes.end(JSON.stringify({ error: 'Forbidden' }));
                         return;
                     }
-                    const prevHadSwitch = state.hadSwitch;
-                    const prevHadNonAnthropic = state.hadNonAnthropicSession;
+                    const prev = {
+                        hadSwitch: state.hadSwitch,
+                        hadNonAnthropicSession: state.hadNonAnthropicSession,
+                        stripNextRequest: state.stripNextRequest,
+                    };
                     state.hadSwitch = false;
                     state.hadNonAnthropicSession = state.mode !== 'anthropic';
-                    console.log(`[MODEL-PROXY] State reset: hadSwitch ${prevHadSwitch}→false, hadNonAnthropicSession ${prevHadNonAnthropic}→${state.hadNonAnthropicSession}`);
+                    state.stripNextRequest = false;
+                    console.log(`[MODEL-PROXY] State reset: hadSwitch ${prev.hadSwitch}→false, hadNonAnthropicSession ${prev.hadNonAnthropicSession}→${state.hadNonAnthropicSession}`);
                     clientRes.writeHead(200, { 'content-type': 'application/json' });
-                    clientRes.end(JSON.stringify({
-                        reset: true,
-                        mode: state.mode,
-                        previous: { hadSwitch: prevHadSwitch, hadNonAnthropicSession: prevHadNonAnthropic },
-                    }));
+                    clientRes.end(JSON.stringify({ reset: true, mode: state.mode, previous: prev }));
                     return;
                 }
                 clientRes.writeHead(404, { 'content-type': 'application/json' });
@@ -380,15 +387,19 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
                 if (isModelCall) {
                     try {
                         const parsed = JSON.parse(body);
-                        // If we've switched backends, strip ALL thinking blocks —
-                        // we can't tell which blocks are from which backend and
-                        // foreign blocks cause 400s on both sides.
-                        // If we've never switched (pure same-backend session),
-                        // keep signed thinking blocks (they're from the current
-                        // backend) and only strip unsigned ones.
-                        if (state.hadSwitch) {
+                        // stripNextRequest: first request after switch, strip ALL to clear
+                        // foreign thinking blocks, then reset flags so new backend's
+                        // thinking blocks can accumulate normally.
+                        if (state.stripNextRequest) {
+                            stripAllThinkingBlocks(parsed);
+                            state.stripNextRequest = false;
+                            state.hadSwitch = false; // allow thinking to accumulate again
+                            console.log(`[MODEL-PROXY] #${reqId} stripped all thinking (post-switch reset)`);
+                        } else if (state.hadSwitch) {
+                            // Fallback: still in switched state somehow
                             stripAllThinkingBlocks(parsed);
                         } else {
+                            // Normal: keep signed thinking blocks from current backend
                             stripUnsignedThinkingBlocks(parsed);
                         }
                         body = Buffer.from(JSON.stringify(parsed));
