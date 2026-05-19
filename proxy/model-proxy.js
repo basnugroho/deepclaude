@@ -226,6 +226,10 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
                         mode: state.mode,
                         uptime: Math.round((Date.now() - t0Global) / 1000),
                         requests: reqCount,
+                        flags: {
+                            hadSwitch: state.hadSwitch,
+                            hadNonAnthropicSession: state.hadNonAnthropicSession,
+                        },
                     }));
                     return;
                 }
@@ -271,6 +275,26 @@ export function startModelProxy({ targetUrl, apiKey, startPort = 3200, backends,
                 if (urlPath === '/_proxy/mode' && clientReq.method !== 'POST') {
                     clientRes.writeHead(405, { 'content-type': 'application/json' });
                     clientRes.end(JSON.stringify({ error: 'Use POST' }));
+                    return;
+                }
+                if (urlPath === '/_proxy/reset' && clientReq.method === 'POST') {
+                    const origin = clientReq.headers['origin'] || '';
+                    if (origin && !origin.startsWith('http://127.0.0.1') && !origin.startsWith('http://localhost')) {
+                        clientRes.writeHead(403, { 'content-type': 'application/json' });
+                        clientRes.end(JSON.stringify({ error: 'Forbidden' }));
+                        return;
+                    }
+                    const prevHadSwitch = state.hadSwitch;
+                    const prevHadNonAnthropic = state.hadNonAnthropicSession;
+                    state.hadSwitch = false;
+                    state.hadNonAnthropicSession = state.mode !== 'anthropic';
+                    console.log(`[MODEL-PROXY] State reset: hadSwitch ${prevHadSwitch}→false, hadNonAnthropicSession ${prevHadNonAnthropic}→${state.hadNonAnthropicSession}`);
+                    clientRes.writeHead(200, { 'content-type': 'application/json' });
+                    clientRes.end(JSON.stringify({
+                        reset: true,
+                        mode: state.mode,
+                        previous: { hadSwitch: prevHadSwitch, hadNonAnthropicSession: prevHadNonAnthropic },
+                    }));
                     return;
                 }
                 clientRes.writeHead(404, { 'content-type': 'application/json' });
