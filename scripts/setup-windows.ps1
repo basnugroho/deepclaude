@@ -58,19 +58,39 @@ foreach ($var in $envVarsToClear) {
     }
 }
 
+# Create .env template if not exists
+$envFile = "$env:USERPROFILE\.deepclaude-keys"
+if (-not (Test-Path $envFile)) {
+    @"
+# DeepClaude API Keys
+# Edit this file with your actual API keys
+
+DEEPSEEK_API_KEY=sk-your-deepseek-key-here
+# OPENROUTER_API_KEY=sk-or-your-key-here
+# FIREWORKS_API_KEY=your-key-here
+"@ | Set-Content $envFile
+    Write-Host "[OK] Created $envFile - edit with your API keys"
+} else {
+    Write-Host "[OK] $envFile already exists"
+}
+
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "Setup complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "RESTART PowerShell, then use:" -ForegroundColor Yellow
+Write-Host "1. Edit API keys:" -ForegroundColor Yellow
+Write-Host "   notepad $env:USERPROFILE\.deepclaude-keys"
 Write-Host ""
-Write-Host "  start-deepclaude        # Start proxy + Claude with DeepSeek"
-Write-Host "  start-deepclaude-vscode # Start proxy + VSCode with DeepSeek"
-Write-Host "  claude-deepseek         # Claude with DeepSeek (proxy must be running)"
-Write-Host "  claude-anthropic        # Claude with Anthropic (no proxy)"
+Write-Host "2. RESTART PowerShell" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "3. Use commands:" -ForegroundColor Yellow
+Write-Host "   start-deepclaude        # Start proxy + Claude with DeepSeek"
+Write-Host "   start-deepclaude-vscode # Start proxy + VSCode with DeepSeek"
+Write-Host "   claude-deepseek         # Claude with DeepSeek (proxy must be running)"
+Write-Host "   claude-anthropic        # Claude with Anthropic (no proxy)"
 Write-Host ""
 Write-Host "Inside Claude Code, use slash commands:"
-Write-Host "  /deepseek    /anthropic    /openrouter"
-Write-Host "  /proxy-status    /proxy-cost"
+Write-Host "   /deepseek    /anthropic    /openrouter"
+Write-Host "   /proxy-status    /proxy-cost"
 Write-Host ""

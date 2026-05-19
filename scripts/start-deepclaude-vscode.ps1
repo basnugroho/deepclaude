@@ -5,6 +5,18 @@ param(
     [string]$Path = "."
 )
 
+# Load API keys from .env file
+$envFile = "$env:USERPROFILE\.deepclaude-keys"
+if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+        if ($_ -match '^\s*([^#][^=]+)=(.+)$') {
+            $name = $matches[1].Trim()
+            $value = $matches[2].Trim()
+            [Environment]::SetEnvironmentVariable($name, $value, "Process")
+        }
+    }
+}
+
 # Find repo directory
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoDir = Split-Path -Parent $scriptDir

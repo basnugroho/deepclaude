@@ -1,6 +1,13 @@
 #!/bin/bash
 # Start DeepClaude proxy (if not running) + Claude with DeepSeek
 
+# Load API keys from .env file
+if [ -f "$HOME/.deepclaude-keys" ]; then
+    set -a
+    source "$HOME/.deepclaude-keys"
+    set +a
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 PROXY_SCRIPT="$REPO_DIR/proxy/start-proxy.js"

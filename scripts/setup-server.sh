@@ -57,11 +57,34 @@ echo 'Run curl -s http://127.0.0.1:3200/_proxy/status silently, then show the re
 echo 'Run curl -s http://127.0.0.1:3200/_proxy/cost silently, then show cost summary.' > "$HOME/.claude/commands/proxy-cost.md"
 echo "[OK] Installed slash commands"
 
-# Remind about DEEPSEEK_API_KEY
-if [ -z "$DEEPSEEK_API_KEY" ]; then
-    echo ""
-    echo "[WARN] DEEPSEEK_API_KEY not set. Add to ~/.bashrc:"
-    echo "  export DEEPSEEK_API_KEY=\"sk-xxx\""
+# Create .env template if not exists
+ENV_KEYS_FILE="$HOME/.deepclaude-keys"
+if [ ! -f "$ENV_KEYS_FILE" ]; then
+    cat > "$ENV_KEYS_FILE" << 'EOF'
+# DeepClaude API Keys
+# Edit this file with your actual API keys
+
+DEEPSEEK_API_KEY=sk-your-deepseek-key-here
+# OPENROUTER_API_KEY=sk-or-your-key-here
+# FIREWORKS_API_KEY=your-key-here
+EOF
+    echo "[OK] Created $ENV_KEYS_FILE - edit with your API keys"
+else
+    echo "[OK] $ENV_KEYS_FILE already exists"
+fi
+
+# Add .env loading to .bashrc if not present
+if ! grep -q "deepclaude-keys" "$BASHRC" 2>/dev/null; then
+    cat >> "$BASHRC" << 'EOF'
+
+# Load DeepClaude API keys
+if [ -f "$HOME/.deepclaude-keys" ]; then
+    set -a
+    source "$HOME/.deepclaude-keys"
+    set +a
+fi
+EOF
+    echo "[OK] Added .env loading to $BASHRC"
 fi
 
 echo ""
@@ -69,8 +92,11 @@ echo "========================================"
 echo "Setup complete!"
 echo "========================================"
 echo ""
-echo "1. Add DEEPSEEK_API_KEY to ~/.bashrc if not done"
-echo "2. Run: source ~/.bashrc"
+echo "1. Edit ~/.deepclaude-keys with your API keys:"
+echo "   nano ~/.deepclaude-keys"
+echo ""
+echo "2. Reload: source ~/.bashrc"
+echo ""
 echo "3. Start proxy: start-deepclaude"
 echo ""
 echo "To switch modes (then restart VSCode SSH):"
