@@ -1,14 +1,15 @@
 # Start DeepClaude proxy (if not running) + Claude with DeepSeek
 
-# Load API keys from .env file (check repo first, then home dir)
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoDir = Split-Path -Parent $scriptDir
+# Load API keys from .env file (check multiple locations)
 $envFiles = @(
-    "$repoDir\.env",
-    "$env:USERPROFILE\.deepclaude-keys"
+    ".\.env",                                    # Current directory
+    "$PWD\.env",                                 # PWD
+    "$env:USERPROFILE\projects\deepclaude\.env", # Default Windows location
+    "$env:USERPROFILE\.deepclaude-keys"          # Home fallback
 )
 foreach ($envFile in $envFiles) {
     if (Test-Path $envFile) {
+        Write-Host "[INFO] Loading keys from: $envFile" -ForegroundColor Cyan
         Get-Content $envFile | ForEach-Object {
             if ($_ -match '^\s*([^#][^=]+)=(.+)$') {
                 $name = $matches[1].Trim()
