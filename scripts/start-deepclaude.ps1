@@ -48,23 +48,25 @@ if (-not $proxyScript) {
     exit 1
 }
 
-# Check if proxy is already running
-$proxy = Get-NetTCPConnection -LocalPort 3200 -State Listen -ErrorAction SilentlyContinue
-if (-not $proxy) {
-    Write-Host "[INFO] Starting proxy on port 3200..." -ForegroundColor Cyan
-    Start-Process -WindowStyle Hidden -FilePath "node" -ArgumentList "`"$proxyScript`"", "--mode", "deepseek", "--port", "3200"
-    Start-Sleep -Seconds 2
+# Kill existing proxy on port 3200 and start fresh
+$existingProxy = Get-NetTCPConnection -LocalPort 3200 -State Listen -ErrorAction SilentlyContinue
+if ($existingProxy) {
+    Write-Host "[INFO] Stopping existing proxy..." -ForegroundColor Yellow
+    $existingProxy | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+    Start-Sleep -Seconds 1
+}
 
-    # Verify proxy started
-    $proxy = Get-NetTCPConnection -LocalPort 3200 -State Listen -ErrorAction SilentlyContinue
-    if ($proxy) {
-        Write-Host "[OK] Proxy started on port 3200" -ForegroundColor Green
-    } else {
-        Write-Host "[ERROR] Failed to start proxy" -ForegroundColor Red
-        exit 1
-    }
+Write-Host "[INFO] Starting proxy on port 3200..." -ForegroundColor Cyan
+Start-Process -WindowStyle Hidden -FilePath "node" -ArgumentList "`"$proxyScript`"", "--mode", "deepseek", "--port", "3200"
+Start-Sleep -Seconds 2
+
+# Verify proxy started
+$proxy = Get-NetTCPConnection -LocalPort 3200 -State Listen -ErrorAction SilentlyContinue
+if ($proxy) {
+    Write-Host "[OK] Proxy started on port 3200" -ForegroundColor Green
 } else {
-    Write-Host "[OK] Proxy already running on port 3200" -ForegroundColor Green
+    Write-Host "[ERROR] Failed to start proxy" -ForegroundColor Red
+    exit 1
 }
 
 # Set DeepSeek env vars
