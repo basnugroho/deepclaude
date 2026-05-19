@@ -1,8 +1,8 @@
 # API keys - never commit!
 .env
-.env.*
-*.env
 .deepclaude-keys
+# But keep the example
+!.env.example
 
 # Logs
 *.log
