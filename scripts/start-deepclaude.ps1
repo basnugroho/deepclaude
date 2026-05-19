@@ -1,14 +1,22 @@
 # Start DeepClaude proxy (if not running) + Claude with DeepSeek
 
-# Load API keys from .env file
-$envFile = "$env:USERPROFILE\.deepclaude-keys"
-if (Test-Path $envFile) {
-    Get-Content $envFile | ForEach-Object {
-        if ($_ -match '^\s*([^#][^=]+)=(.+)$') {
-            $name = $matches[1].Trim()
-            $value = $matches[2].Trim()
-            [Environment]::SetEnvironmentVariable($name, $value, "Process")
+# Load API keys from .env file (check repo first, then home dir)
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoDir = Split-Path -Parent $scriptDir
+$envFiles = @(
+    "$repoDir\.env",
+    "$env:USERPROFILE\.deepclaude-keys"
+)
+foreach ($envFile in $envFiles) {
+    if (Test-Path $envFile) {
+        Get-Content $envFile | ForEach-Object {
+            if ($_ -match '^\s*([^#][^=]+)=(.+)$') {
+                $name = $matches[1].Trim()
+                $value = $matches[2].Trim()
+                [Environment]::SetEnvironmentVariable($name, $value, "Process")
+            }
         }
+        break
     }
 }
 
