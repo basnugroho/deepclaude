@@ -1,0 +1,11 @@
+#!/bin/bash
+# Claude with Anthropic (direct, no proxy)
+
+unset ANTHROPIC_AUTH_TOKEN
+unset ANTHROPIC_DEFAULT_OPUS_MODEL
+unset ANTHROPIC_DEFAULT_SONNET_MODEL
+unset ANTHROPIC_DEFAULT_HAIKU_MODEL
+unset ANTHROPIC_BASE_URL
+unset CLAUDE_CODE_SUBAGENT_MODEL
+
+exec claude "$@"
